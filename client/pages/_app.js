@@ -5,19 +5,19 @@ function MyApp({ Component, pageProps }) {
   return (
     <div>
       <nav className="border-b p-6">
-        <p className="text-4xl font-bold">Bored Pet Marketplace</p>
+        <p className="text-4xl font-bold">Vtuber Marketplace</p>
         <div className="flex mt-4">
           <Link href="/" className="mr-4 text-teal-400">
-              Home
+              Home 
           </Link>
           <Link href="/create-and-list-nft" className="mr-6 text-teal-400">
-              Sell a new NFT
+              Sell a new NFT 
           </Link>
           <Link href="/my-nfts" className="mr-6 text-teal-400">
-              My NFTs
+              My NFTs 
           </Link>
           <Link href="/my-listed-nfts" className="mr-6 text-teal-400">
-              My Listed NFTs
+              My Listed NFTs 
           </Link>
         </div>
       </nav>
