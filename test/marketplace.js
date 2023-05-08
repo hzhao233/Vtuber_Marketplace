@@ -73,6 +73,34 @@ contract("Marketplace", function (accounts) {
       "Price must be at least 1 wei"
     );
   });
+
+  // Unsuccessful buying
+  it("should list nft", async function () {
+    let tokenID = await mintNft(vtuberNFT, TOKEN_OWNER);
+    let tracker = await balance.tracker(MARKETPLACE_OWNER);
+    await tracker.get();
+    let txn = await marketplace.listNft(nftContract, tokenID, ether("100000000000000.0"), {from: TOKEN_OWNER, value: listingFee});
+    assert.equal(await tracker.delta(), listingFee, "Listing fee not transferred");
+    let expectedListing = {
+      nftContract: nftContract,
+      tokenId: tokenID,
+      seller: TOKEN_OWNER,
+      owner: marketplace.address,
+      price: ether("100000000000000.0"),
+      listed: true
+    };
+    assertListing(getListing(await marketplace.getListedNfts(), tokenID), expectedListing);
+    assertListing(getListing(await marketplace.getMyListedNfts({from: TOKEN_OWNER}), tokenID), expectedListing);
+    delete expectedListing.listed;
+    expectEvent(txn, "NFTListed", listingToString(expectedListing));
+  });
+  it("should validate before buying", async function () {
+    await expectRevert(
+      marketplace.buyNft(nftContract, 1, {from: BUYER}),
+      "Not enough ether to cover asking price"
+    );
+  });
+
   // Mint and list nft
   it("should list nft", async function () {
     let tokenID = await mintNft(vtuberNFT, TOKEN_OWNER);
