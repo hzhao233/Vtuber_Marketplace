@@ -4,7 +4,7 @@ import Web3Modal from 'web3modal'
 import { useRouter } from 'next/router'
 import { create as ipfsHttpClient } from 'ipfs-http-client'
 import Marketplace from '../contracts/ethereum-contracts/Marketplace.json'
-import BoredPetsNFT from '../contracts/ethereum-contracts/BoredPetsNFT.json'
+import VtuberNFT from '../contracts/ethereum-contracts/VtuberNFT.json'
 
 const projectId = process.env["NEXT_PUBLIC_IPFS_KEY"];
 const projectSecret = process.env["NEXT_PUBLIC_IPFS_PROJECT_ID"];
@@ -70,17 +70,17 @@ export default function CreateItem() {
     const networkId = await web3.eth.net.getId()
 
     // Mint the NFT
-    const boredPetsContractAddress = BoredPetsNFT.networks[networkId].address
-    const boredPetsContract = new web3.eth.Contract(BoredPetsNFT.abi, boredPetsContractAddress)
+    const VtuberContractAddress = VtuberNFT.networks[networkId].address
+    const VtuberContract = new web3.eth.Contract(VtuberNFT.abi, VtuberContractAddress)
     const accounts = await web3.eth.getAccounts()
     const marketPlaceContract = new web3.eth.Contract(Marketplace.abi, Marketplace.networks[networkId].address)
     let listingFee = await marketPlaceContract.methods.LISTING_FEE().call()
     listingFee = listingFee.toString()
-    boredPetsContract.methods.mint(url).send({ from: accounts[0] }).on('receipt', function (receipt) {
+    VtuberContract.methods.mint(url).send({ from: accounts[0] }).on('receipt', function (receipt) {
         console.log('minted');
         // List the NFT
         const tokenId = receipt.events.NFTMinted.returnValues[0];
-        marketPlaceContract.methods.listNft(boredPetsContractAddress, tokenId, Web3.utils.toWei(formInput.price, "ether"))
+        marketPlaceContract.methods.listNft(VtuberContractAddress, tokenId, Web3.utils.toWei(formInput.price, "ether"))
             .send({ from: accounts[0], value: listingFee }).on('receipt', function () {
                 console.log('listed')
                 router.push('/')

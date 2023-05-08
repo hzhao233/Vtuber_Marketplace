@@ -7,7 +7,7 @@ require("@openzeppelin/test-helpers/configure")({
 
 const { balance, ether, expectRevert, expectEvent } = require('@openzeppelin/test-helpers');
 const Marketplace = artifacts.require("Marketplace");
-const BoredPetsNFT = artifacts.require("BoredPetsNFT");
+const VtuberNFT = artifacts.require("VtuberNFT");
 
 function assertListing(actual, expected) {
   assert.equal(actual.nftContract, expected.nftContract, "NFT contract is not correct");
@@ -50,14 +50,14 @@ contract("Marketplace", function (accounts) {
   const TOKEN_OWNER = accounts[1];
   const BUYER = accounts[2];
   let marketplace;
-  let boredPetsNFT;
+  let vtuberNFT;
   let nftContract;
   let listingFee;
 
   before('should reuse variables', async () => {
     marketplace = await Marketplace.deployed();
-    boredPetsNFT = await BoredPetsNFT.deployed();
-    nftContract = boredPetsNFT.address;
+    vtuberNFT = await VtuberNFT.deployed();
+    nftContract = vtuberNFT.address;
     listingFee = (await marketplace.LISTING_FEE()).toString();
     console.log("marketplace %s", marketplace.address)
     console.log("token_owner %s", TOKEN_OWNER)
@@ -73,8 +73,9 @@ contract("Marketplace", function (accounts) {
       "Price must be at least 1 wei"
     );
   });
+  // Mint and list nft
   it("should list nft", async function () {
-    let tokenID = await mintNft(boredPetsNFT, TOKEN_OWNER);
+    let tokenID = await mintNft(vtuberNFT, TOKEN_OWNER);
     let tracker = await balance.tracker(MARKETPLACE_OWNER);
     await tracker.get();
     let txn = await marketplace.listNft(nftContract, tokenID, ether(".005"), {from: TOKEN_OWNER, value: listingFee});
@@ -92,6 +93,7 @@ contract("Marketplace", function (accounts) {
     delete expectedListing.listed;
     expectEvent(txn, "NFTListed", listingToString(expectedListing));
   });
+  // Buying
   it("should validate before buying", async function () {
     await expectRevert(
       marketplace.buyNft(nftContract, 1, {from: BUYER}),
@@ -99,7 +101,7 @@ contract("Marketplace", function (accounts) {
     );
   });
   it("should modify listings when nft is bought", async function () {
-    let tokenID = await mintNft(boredPetsNFT, TOKEN_OWNER);
+    let tokenID = await mintNft(vtuberNFT, TOKEN_OWNER);
     await marketplace.listNft(nftContract, tokenID, ether(".005"), {from: TOKEN_OWNER, value: listingFee});
     let expectedListing = {
       nftContract: nftContract,
@@ -119,6 +121,53 @@ contract("Marketplace", function (accounts) {
     delete expectedListing.listed;
     expectEvent(txn, "NFTSold", listingToString(expectedListing));
   });
+
+  // Transfer
+  // - Mint and list
+  it("should mint and list nft", async function () {
+    let tokenID = await mintNft(vtuberNFT, TOKEN_OWNER);
+    let tracker = await balance.tracker(MARKETPLACE_OWNER);
+    await tracker.get();
+    let txn = await marketplace.listNft(nftContract, tokenID, ether(".005"), {from: TOKEN_OWNER, value: listingFee});
+    assert.equal(await tracker.delta(), listingFee, "Listing fee not transferred");
+    let expectedListing = {
+      nftContract: nftContract,
+      tokenId: tokenID,
+      seller: TOKEN_OWNER,
+      owner: marketplace.address,
+      price: ether(".005"),
+      listed: true
+    };
+    assertListing(getListing(await marketplace.getListedNfts(), tokenID), expectedListing);
+    assertListing(getListing(await marketplace.getMyListedNfts({from: TOKEN_OWNER}), tokenID), expectedListing);
+    delete expectedListing.listed;
+    expectEvent(txn, "NFTListed", listingToString(expectedListing));
+  });
+  // - Buyer transfer the token to him
+  it("should modify listings when nft is transferred", async function () {
+    marketplace.transferNft(nftContract, 1, {from: BUYER});
+    let tokenID = await mintNft(vtuberNFT, TOKEN_OWNER);
+    await marketplace.listNft(nftContract, tokenID, ether(".005"), {from: TOKEN_OWNER, value: listingFee});
+    let expectedListing = {
+      nftContract: nftContract,
+      tokenId: tokenID,
+      seller: TOKEN_OWNER,
+      owner: marketplace.address,
+      price: ether(".005"),
+      listed: true
+    };
+    assertListing(getListing(await marketplace.getListedNfts(), tokenID), expectedListing);
+    let tracker = await balance.tracker(TOKEN_OWNER);
+    let txn = await marketplace.buyNft(nftContract, tokenID, {from: BUYER, value: ether(".005")});
+    expectedListing.owner = BUYER;
+    expectedListing.listed = false;
+    assert.equal((await tracker.delta()).toString(), ether(".005").toString(), "Price not paid to seller");
+    assertListing(getListing(await marketplace.getMyNfts({from: BUYER}), tokenID), expectedListing);
+    delete expectedListing.listed;
+    expectEvent(txn, "NFTSold", listingToString(expectedListing));
+  });
+
+  // Reselling
   it("should validate reselling", async function () {
     await expectRevert(
       marketplace.resellNft(nftContract, 1, 0, {from: BUYER, value: listingFee}),
@@ -130,7 +179,7 @@ contract("Marketplace", function (accounts) {
     );
   });
   it("should resell nft", async function () {
-    let tokenID = await mintNft(boredPetsNFT, TOKEN_OWNER);
+    let tokenID = await mintNft(vtuberNFT, TOKEN_OWNER);
     await marketplace.listNft(nftContract, tokenID, ether(".005"), {from: TOKEN_OWNER, value: listingFee});
     await marketplace.buyNft(nftContract, tokenID, {from: BUYER, value: ether(".005")});
     let expectedListing = {
@@ -142,7 +191,7 @@ contract("Marketplace", function (accounts) {
       listed: false
     };
     assertListing(getListing(await marketplace.getMyNfts({from: BUYER}), tokenID), expectedListing);
-    await boredPetsNFT.approve(marketplace.address, tokenID, {from: BUYER});
+    await vtuberNFT.approve(marketplace.address, tokenID, {from: BUYER});
     let txn = await marketplace.resellNft(nftContract, tokenID, ether(".005"), {from: BUYER, value: listingFee});
     expectedListing.seller = BUYER;
     expectedListing.owner = marketplace.address;

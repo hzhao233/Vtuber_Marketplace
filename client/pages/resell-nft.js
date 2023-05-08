@@ -5,7 +5,7 @@ import axios from 'axios'
 import Web3Modal from 'web3modal'
 
 import Marketplace from '../contracts/ethereum-contracts/Marketplace.json'
-import BoredPetsNFT from '../contracts/ethereum-contracts/BoredPetsNFT.json'
+import VtuberNFT from '../contracts/ethereum-contracts/VtuberNFT.json'
 
 export default function ResellNFT() {
   const [formInput, updateFormInput] = useState({ price: '', image: '' })
@@ -36,7 +36,7 @@ export default function ResellNFT() {
         let listingFee = await marketPlaceContract.methods.LISTING_FEE().call()
         listingFee = listingFee.toString()
         const accounts = await web3.eth.getAccounts()
-        marketPlaceContract.methods.resellNft(BoredPetsNFT.networks[networkId].address, id, Web3.utils.toWei(formInput.price, "ether"))
+        marketPlaceContract.methods.resellNft(VtuberNFT.networks[networkId].address, id, Web3.utils.toWei(formInput.price, "ether"))
             .send({ from: accounts[0], value: listingFee }).on('receipt', function () {
                 router.push('/')
             });
