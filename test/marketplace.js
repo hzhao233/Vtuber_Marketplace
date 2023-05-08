@@ -167,6 +167,49 @@ contract("Marketplace", function (accounts) {
     expectEvent(txn, "NFTSold", listingToString(expectedListing));
   });
 
+  // Retract a sale
+  it("should mint and list nft", async function () {
+    let tokenID = await mintNft(vtuberNFT, TOKEN_OWNER);
+    let tracker = await balance.tracker(MARKETPLACE_OWNER);
+    await tracker.get();
+    let txn = await marketplace.listNft(nftContract, tokenID, ether(".005"), {from: TOKEN_OWNER, value: listingFee});
+    assert.equal(await tracker.delta(), listingFee, "Listing fee not transferred");
+    let expectedListing = {
+      nftContract: nftContract,
+      tokenId: tokenID,
+      seller: TOKEN_OWNER,
+      owner: marketplace.address,
+      price: ether(".005"),
+      listed: true
+    };
+    assertListing(getListing(await marketplace.getListedNfts(), tokenID), expectedListing);
+    assertListing(getListing(await marketplace.getMyListedNfts({from: TOKEN_OWNER}), tokenID), expectedListing);
+    delete expectedListing.listed;
+    expectEvent(txn, "NFTListed", listingToString(expectedListing));
+    marketplace.removeNFTfromSale(nftContract, tokenID, {from: TOKEN_OWNER});
+  });
+  it("should modify listings when nft is retracted", async function () {
+    let tokenID = await mintNft(vtuberNFT, TOKEN_OWNER);
+    await marketplace.listNft(nftContract, tokenID, ether(".005"), {from: TOKEN_OWNER, value: listingFee});
+    let expectedListing = {
+      nftContract: nftContract,
+      tokenId: tokenID,
+      seller: TOKEN_OWNER,
+      owner: marketplace.address,
+      price: ether(".005"),
+      listed: true
+    };
+    assertListing(getListing(await marketplace.getListedNfts(), tokenID), expectedListing);
+    let tracker = await balance.tracker(TOKEN_OWNER);
+    let txn = await marketplace.buyNft(nftContract, tokenID, {from: BUYER, value: ether(".005")});
+    expectedListing.owner = BUYER;
+    expectedListing.listed = false;
+    assert.equal((await tracker.delta()).toString(), ether(".005").toString(), "Price not paid to seller");
+    assertListing(getListing(await marketplace.getMyNfts({from: BUYER}), tokenID), expectedListing);
+    delete expectedListing.listed;
+    expectEvent(txn, "NFTSold", listingToString(expectedListing));
+  });
+
   // Reselling
   it("should validate reselling", async function () {
     await expectRevert(

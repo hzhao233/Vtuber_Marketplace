@@ -102,7 +102,22 @@ contract Marketplace is ReentrancyGuard {
     nft.listed = false;
 
     _nftsSold.increment();
-    emit NFTSold(_nftContract, nft.tokenId, nft.seller, buyer, msg.value);
+    emit NFTSold(_nftContract, nft.tokenId, nft.seller, buyer, 0);
+  }
+
+  // Remove NFT from sale
+  function removeNFTfromSale(address _nftContract, uint256 _tokenId) public payable nonReentrant {
+    NFT storage nft = _idToNFT[_tokenId];
+    require(msg.sender == nft.seller, "Not the same person");
+
+    address payable buyer = payable(msg.sender);
+    payable(nft.seller).transfer(msg.value);
+    IERC721(_nftContract).transferFrom(address(this), buyer, nft.tokenId);
+    nft.listed = false;
+
+    // Count as sold?
+    _nftsSold.increment();
+    emit NFTSold(_nftContract, nft.tokenId, nft.seller, buyer, 0);
   }
 
   function getListedNfts() public view returns (NFT[] memory) {
